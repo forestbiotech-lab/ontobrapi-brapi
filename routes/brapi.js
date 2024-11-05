@@ -3,6 +3,7 @@ const router = express.Router();
 const cache = require("./../components/db/cache")
 const options = require("./../.config").admin
 
+//TODO refactor and send to module
 function refactor(results){
     let _={
         dataTypes:[],
@@ -23,6 +24,7 @@ function refactor(results){
     })
 }
 
+//TODO refactor and send to module
 async function getServerInfoForCall(service){
     try{
         let serverInfo=await cache.query("serverInfo.json",[{$match:{'callUrl':service}}])
@@ -54,7 +56,9 @@ async function getServerInfoForCall(service){
 //-------------------------------------------------
 
 router.get('/', async function(req, res, next) {
-    let results = await cache.query("","serverInfo.json",[])
+    let results = await cache.query("serverInfo.json",[])
+
+    //TODO get call Structure
     res.send(refactor(results.data))
 });
 
