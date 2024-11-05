@@ -1,0 +1,20 @@
+{
+  "name": "ontobrapi-brapi",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www",
+    "dev": "nodemon ./bin/www"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "express": "^4.18.2",
+    "http": "^0.0.1-security",
+    "http-errors": "~1.6.3",
+    "mongodb": "^6.4.0",
+    "morgan": "~1.9.1",
+    "pug": "^3.0.2",
+    "sparql-http-client": "^2.4.2"
+  }
+}
