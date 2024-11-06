@@ -69,7 +69,10 @@ router.get('/:version/:service/',async function(req,res,next){
         // Set up a new call for post
         let {version,service}=req.params
         let callInfo=await getServerInfoForCall(service)
-        ///TODO how to get the module
+        //TODO Get module form callInfo
+        //TODO get call from brapi As seen bellow, throw request to admin
+        //TODO ignore down below data.
+
         /*let requestParams=sanitizeParams(req.query) //TODO security check params based onl
 
         //TODO get BrAPI query. Maybe request from other module.
