@@ -2,94 +2,70 @@ const express = require('express');
 const router = express.Router();
 const cache = require("./../components/db/cache")
 const options = require("./../.config").admin
-
-//TODO refactor and send to module
-function refactor(results){
-    let _={
-        dataTypes:[],
-        methods:[],
-        service:"",
-        versions:[]
-    }
-    return results.map(result=>{
-        let call={}
-        call.dataTypes=Object.entries(result.datatypes)
-            .filter(([datatype, value]) => value === true).map(([datatype, value]) => datatype)
-        call.methods=Object.entries(result.methods)
-                     .filter(([method, value]) => value === true).map(([method, value]) => method)
-        call.service = result.callUrl
-        call.versions=Object.entries(result.versions)
-            .filter(([version, value]) => value === true).map(([version, value]) => version)
-        return call
-    })
-}
-
-//TODO refactor and send to module
-async function getServerInfoForCall(service){
-    try{
-        let serverInfo=await cache.query("serverInfo.json",[{$match:{'callUrl':service}}])
-        //TODO load from file of doesn't exist. Or run service
-        if(serverInfo.data.length==0){
-            return new Promise((res,rej)=>{
-                fetch(`${options.protocol}://${options.hostname}:${options.port}${options.path}`, {
-                    method: options.method,
-                    body:JSON.stringify({})
-                }).then(async (response)=>{
-                    response=await response.json()
-                    //TODO rerun function
-                    let callInfo=await getServerInfoForCall(service)
-                    res(callInfo)
-                }).catch(err=>{
-                    return {data:[],error:err,totalResults:0,found:false}
-                })
-            })
-        }else{
-            return serverInfo
-        }
-    }catch (e) {
-        console.log(e)
-        return {data:[],error:e,totalResults:0,found:false}
-    }
-}
-
-
-//-------------------------------------------------
+const external_call = require('./../components/external_calls/brapi')
 
 router.get('/', async function(req, res, next) {
     let results = await cache.query("serverInfo.json",[])
 
+
     //TODO get call Structure
-    res.send(refactor(results.data))
+    let version="2.0"
+    let path=`/admin/brapi/${version}/listcalls/core/serverInfo.json/json`
+
+    let response=await fetch(`${options.protocol}://${options.hostname}:${options.port}${path}`, {
+        method: "GET"
+    })
+    response=await response.json()
+    response=external_call.removeInternalMetaDataFromCall(response)
+
+    if(response.result){
+        if(response.result.calls) {
+            response.result.calls = external_call.refactorServerInfo(results.data)
+        }
+    }
+
+    res.send(response)
 });
 
 
 router.get('/:version/:service/',async function(req,res,next){
     try{
+        // TODO - let requestParams=sanitizeParams(req.query)
         // TODO how do I deal with composed services (a/b), new get
-        // Set up a new call for post
+        // TODO Set up a new call for post
         let {version,service}=req.params
-        let callInfo=await getServerInfoForCall(service)
+
+        let callInfo=await external_call.getServerInfoForCall(service)
+        if(callInfo.data){
+            if(callInfo.data.length==1){
+                let {module,file}=callInfo.data[0]
+                let path=`/admin/brapi/${version}/listcalls/${module}/${file}/result`
+
+                let response=await fetch(`${options.protocol}://${options.hostname}:${options.port}${path}`, {
+                    method: "GET"
+                })
+                response=await response.json()
+                response=external_call.removeInternalMetaDataFromCall(response)
+
+                res.json(response)
+            }else{
+                throw new Error("Call unavailable")
+            }
+        }else{
+            throw new Error("Call unavailable")
+        }
+
+
         //TODO Get module form callInfo
         //TODO get call from brapi As seen bellow, throw request to admin
         //TODO ignore down below data.
 
-        /*let requestParams=sanitizeParams(req.query) //TODO security check params based onl
+        //TODO security check params based onl
 
-        //TODO get BrAPI query. Maybe request from other module.
-        let servers= {
-            server: `${req.protocol}://${req.headers.host}/`,
-            //TODO not in config
-            //*****************
-            // ****************
 
-            activeGraph: require("./../.config.json").sparql.ontoBrAPIgraph
-        }
-
-        let callStructure=await brapiAttributesQuery(servers, version, moduleName, callName, requestParams)
-        //res.json(callStructure)*/
-        res.json(callInfo)
     }catch(err){
-        res.json(err)
+        let message=err.message
+        res.json({err:message})
     }
 })
 
